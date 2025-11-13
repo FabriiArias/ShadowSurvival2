@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shadow Survivor</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+    #ui-root {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none; /* 🔑 ¡CLAVE! */
+      z-index: 9999;
+    }
+    .ui-screen {
+      pointer-events: none; /* por defecto */
+    }
+    .ui-screen[style*="display: flex"] {
+      pointer-events: auto; /* solo la activa recibe eventos */
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <div id="ui-root"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+- [x] Agregar sondio de muerte del ojo
+- [x] Pasar la shop a un nuevo doc
+- [x] Cambiar spawn de tipo de enemigos
+- [x] No dejar comprar vida si esta full hp
+- [x] Sonido al recolectar coins, al comprar y cuando no se puede comprar
+- [x] Hacer algo cuando termina la oleda para que sea mas chill el cambio a la shop
+- [x] Mostrar vida en numeros en el HUD
+- [x] Agregar mas enemigos con diferentes ataques
+- [x] Sonidos de danio al pj y cuando tiene escudo
+- [x] Sonidos para los nuevos pj y anumaciones de muerte (?
+- [x] Menu scene
+- [x] Hacer scene para el game over
+- [x] Poner el relaod al terminar una oleada y al apretar la R
+- [x] Hacer un pausescene y poner 
+- [] Agregar sprites y animaciones de las demas guns -CANCELADO POR FALTA DE TIEMPO-
+- [] Ver que la pausa no anda bien 
+- [] Boost de danio no funca
+- [] botones de mute all y mute music del gameScene
+- [] Que no deje stackear mas de 3 escudos y maxear la vida
+- [] Poner algun feedback a la hora de savear partida
+- [] Algun error con el tiempo que se carga en el getsave 
+- [] REGISTER
+- [] ocultar hud
+- [] Entrar como invitado
+- [] Poner un resuen del progreso en ese momento. 
+  

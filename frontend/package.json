@@ -1,0 +1,17 @@
+{
+  "name": "shadowsurvivol-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.13.1",
+    "phaser": "^3.80.1"
+  }
+}

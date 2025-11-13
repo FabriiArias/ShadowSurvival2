@@ -1,0 +1,63 @@
+/* /src/ui/menu.css */
+@font-face {
+  font-family: "PressStart2P";
+  src: url("/assets/fonts/PressStart2P-Regular.ttf");
+}
+
+.menu-screen {
+  position: absolute;
+  inset: 0;
+  background: url("/assets/images/menu_bg.png") center/cover no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 1000;
+  animation: fadeIn 1s ease;
+}
+
+.menu-container {
+  text-align: center;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 40px 60px;
+  border: 3px solid #0f0;
+  border-radius: 10px;
+  box-shadow: 0 0 30px #0f0;
+}
+
+.menu-title {
+  font-family: "PressStart2P", monospace;
+  color: #0f0;
+  text-shadow: 0 0 10px #0f0;
+  font-size: 28px;
+  margin-bottom: 40px;
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.menu-btn {
+  font-family: "PressStart2P", monospace;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid #0f0;
+  color: #0f0;
+  font-size: 14px;
+  padding: 15px 25px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.menu-btn:hover {
+  background: #0f0;
+  color: #000;
+  text-shadow: none;
+  transform: scale(1.05);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
