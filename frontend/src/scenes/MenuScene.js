@@ -1,41 +1,37 @@
 import PlayerData from "../systems/PlayerData.js";
-import { playerApi } from "../utils/api.js"; // arriba del todo
-import { storage } from "../utils/storage"; // asegurate de tener esto arriba
-
+import { playerApi } from "../utils/api.js";
+import { storage } from "../utils/storage.js";
 
 export default class MenuScene extends Phaser.Scene {
   constructor() {
     super({ key: "MenuScene" });
   }
 
-
   create() {
     const { centerX, centerY } = this.cameras.main;
 
     // Fondo del menú
     this.bg = this.add.image(centerX, centerY, "menu_bg").setOrigin(0.5);
-
-    // Escalar manteniendo proporciones + margen para el zoom interno
     const scaleX = this.cameras.main.width / this.bg.width;
     const scaleY = this.cameras.main.height / this.bg.height;
-    const baseScale = Math.max(scaleX, scaleY) * 1.1; // margen 10%
+    const baseScale = Math.max(scaleX, scaleY) * 1.1;
     this.bg.setScale(baseScale);
 
-    // 🔍 Animación de zoom suave (sin achicarse nunca)
+    // Animación de zoom suave
     this.tweens.add({
       targets: this.bg,
-      scale: baseScale * 1.05, // zoom leve dentro del margen
+      scale: baseScale * 1.05,
       duration: 8000,
       yoyo: true,
       repeat: -1,
       ease: "Sine.easeInOut",
     });
 
-    // 🎵 Música del menú
+    // Música del menú
     this.menuMusic = this.sound.add("menu_music", { loop: true, volume: 0.5 });
     this.menuMusic.play();
 
-    // 🎮 Título principal
+    // Título principal
     this.add
       .text(centerX, 150, "SHADOW SURVIVOR", {
         fontSize: "64px",
@@ -51,14 +47,11 @@ export default class MenuScene extends Phaser.Scene {
       this.sound.stopAll();
       PlayerData.reset?.();
       document.getElementById("ui-root").style.display = "none";
-
       this.scene.start("GameScene");
     });
 
     this.createButton(centerX, centerY + 30, "Continuar", () => {
-      // En el futuro: cargar datos desde DB
-       this.openLoadMenu();
-      console.log("🔜 Continuar partida (DB)");
+      this.openLoadMenu();
     });
 
     this.createButton(centerX, centerY + 110, "Cómo jugar", () => {
@@ -72,11 +65,26 @@ export default class MenuScene extends Phaser.Scene {
     this.createButton(centerX, centerY + 270, "Créditos", () => {
       window.open("https://fabrizio-arias.vercel.app/", "_blank");
     });
+
+    // Botón Cerrar Sesión (si está logueado)
+    // Botón Cerrar Sesión (si está logueado)
+const user = storage.getUser();
+if (user && user.id) {
+  this.createButton(centerX, centerY + 350, "Cerrar sesión", () => {
+    // 🔹 DETENER MÚSICA Y LIMPIAR
+    this.menuMusic.stop();
+    this.sound.stopAll();
+    storage.clear();
+    
+    // 🔹 IR A LOGIN SCENE EN LUGAR DE REINICIAR
+    this.scene.start("LoginScene");
+  });
+}
+
     // Botones de sonido
-    this.createMuteButtons();
+        this.createMuteButtons();
   }
 
-  // Creador de botones reutilizable
   createButton(x, y, label, onClick) {
     const btn = this.add
       .text(x, y, label.toUpperCase(), {
@@ -104,21 +112,171 @@ export default class MenuScene extends Phaser.Scene {
     return btn;
   }
 
-  // Modal "Cómo jugar"
+  async openLoadMenu() {
+  const { centerX, centerY } = this.cameras.main;
+
+  // Crear overlay
+  const overlay = this.add.rectangle(centerX, centerY, 1920, 1080, 0x000000, 0.8);
+  
+  // Elementos a limpiar después
+  const elementsToDestroy = [overlay];
+
+  // Obtener usuario
+  const user = storage.getUser();
+  console.log('🔍 Usuario en localStorage:', user);
+  
+  // 🔹 FIX: Obtener el ID correctamente (user.user.id)
+  const userId = user?.user?.id || user?.id;
+  console.log('🔍 User ID encontrado:', userId);
+  
+  if (!user || !user.token || !userId) {
+    console.warn("⚠️ No hay usuario logueado o ID inválido");
+    const errorText = this.add.text(centerX, centerY - 50, "Debes iniciar sesión para continuar", {
+      fontSize: "28px",
+      color: "#ff6666",
+      backgroundColor: "#00000099",
+      padding: { x: 30, y: 20 },
+    }).setOrigin(0.5);
+    
+    const closeBtn = this.add.text(centerX, centerY + 30, "Cerrar", {
+      fontSize: "24px",
+      color: "#ffffff",
+      backgroundColor: "#333333",
+      padding: { x: 20, y: 10 },
+    })
+    .setOrigin(0.5)
+    .setInteractive()
+    .on("pointerdown", () => {
+      this.cleanupLoadMenu([...elementsToDestroy, errorText, closeBtn]);
+    });
+    
+    elementsToDestroy.push(errorText, closeBtn);
+    return;
+  }
+
+  // Mostrar "cargando..."
+  const loadingText = this.add.text(centerX, centerY, "Cargando partidas...", {
+    fontSize: "28px",
+    color: "#ffffff",
+  }).setOrigin(0.5);
+  elementsToDestroy.push(loadingText);
+
+  // Obtener saves del backend
+  let saves = [];
+  try {
+    console.log('📡 Llamando a playerApi.getSaves con userId:', userId);
+    saves = await playerApi.getSaves(userId); // 🔹 Usar userId corregido
+    console.log('✅ Partidas obtenidas:', saves);
+    
+    // Remover texto de carga
+    loadingText.destroy();
+    
+  } catch (err) {
+    console.error('❌ Error al obtener partidas:', err);
+    loadingText.destroy();
+    
+    const errorMsg = err.response?.data?.message || err.message || "Error de conexión";
+    const errorText = this.add.text(centerX, centerY - 50, `Error: ${errorMsg}`, {
+      fontSize: "24px",
+      color: "#ff6666",
+      backgroundColor: "#00000099",
+      padding: { x: 30, y: 20 },
+    }).setOrigin(0.5);
+    
+    const closeBtn = this.add.text(centerX, centerY + 30, "Cerrar", {
+      fontSize: "24px",
+      color: "#ffffff",
+      backgroundColor: "#333333",
+      padding: { x: 20, y: 10 },
+    })
+    .setOrigin(0.5)
+    .setInteractive()
+    .on("pointerdown", () => {
+      this.cleanupLoadMenu([...elementsToDestroy, errorText, closeBtn]);
+    });
+    
+    elementsToDestroy.push(errorText, closeBtn);
+    return;
+  }
+
+    // Crear el menú de partidas
+    const title = this.add
+      .text(centerX, centerY - 200, "Cargar partida", {
+        fontSize: "42px",
+        color: "#ffffff",
+      })
+      .setOrigin(0.5);
+    elementsToDestroy.push(title);
+
+    this.slotTexts = [];
+
+    for (let i = 1; i <= 5; i++) {
+      const save = saves.find((s) => s.slot_number === i);
+      const label = save
+        ? `Slot ${i} - Oleada ${save.wave_number} (${save.saved_at?.split(" ")[1] || 'sin fecha'})`
+        : `Slot ${i} - Vacío`;
+
+      const txt = this.add
+        .text(centerX, centerY - 120 + i * 60, label, {
+          fontSize: "28px",
+          color: save ? "#90ee90" : "#ffff00",
+          backgroundColor: "#333333",
+          padding: { x: 20, y: 10 },
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .on("pointerover", () => txt.setStyle({ backgroundColor: "#555555" }))
+        .on("pointerout", () => txt.setStyle({ backgroundColor: "#333333" }))
+        .on("pointerdown", () => {
+          if (save) {
+            console.log('🎮 Cargando slot:', save);
+            this.loadGameSlot(save);
+          } else {
+            console.log('❌ Slot vacío:', i);
+          }
+        });
+
+      this.slotTexts.push(txt);
+      elementsToDestroy.push(txt);
+    }
+
+    const backBtn = this.add
+      .text(centerX, centerY + 250, "Cancelar", {
+        fontSize: "28px",
+        color: "#ff6666",
+        backgroundColor: "#333333",
+        padding: { x: 30, y: 10 },
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on("pointerdown", () => {
+        this.cleanupLoadMenu(elementsToDestroy);
+      });
+      
+    elementsToDestroy.push(backBtn);
+  }
+
+  cleanupLoadMenu(elements) {
+    elements.forEach(el => {
+      if (el && typeof el.destroy === 'function') {
+        el.destroy();
+      }
+    });
+    if (this.slotTexts) {
+      this.slotTexts.forEach(txt => txt.destroy());
+      this.slotTexts = [];
+    }
+  }
+
+  loadGameSlot(saveData) {
+    this.sound.stopAll();
+    this.scene.start("GameScene", { loadedSave: saveData });
+  }
+
   showHowToPlay() {
     const { centerX, centerY } = this.cameras.main;
 
-    // Fondo semi-transparente
-    const overlay = this.add.rectangle(
-      centerX,
-      centerY,
-      1920,
-      1080,
-      0x000000,
-      0.8
-    );
-
-    // Texto del modal
+    const overlay = this.add.rectangle(centerX, centerY, 1920, 1080, 0x000000, 0.8);
     const info = this.add
       .text(
         centerX,
@@ -134,7 +292,6 @@ export default class MenuScene extends Phaser.Scene {
       )
       .setOrigin(0.5);
 
-    // Botón volver
     const backBtn = this.add
       .text(centerX, centerY + 220, "VOLVER", {
         fontSize: "30px",
@@ -151,24 +308,11 @@ export default class MenuScene extends Phaser.Scene {
       });
   }
 
-  // Botones de muteo global
   createMuteButtons() {
     const iconSize = 48;
     const offset = 60;
     const x = this.cameras.main.width - offset;
     const y = offset;
-/*
-    const muteAll = this.add
-      .text(x, y, "🔇", {
-        fontSize: `${iconSize}px`,
-      })
-      .setOrigin(1, 0)
-      .setInteractive()
-      .on("pointerdown", () => {
-        const mute = !this.sound.mute;
-        this.sound.mute = mute;
-        muteAll.setText(mute ? "🔇" : "🔈");
-      });*/
 
     const muteMusic = this.add
       .text(x - 60, y, "🎵", {
@@ -186,95 +330,4 @@ export default class MenuScene extends Phaser.Scene {
         }
       });
   }
-
-  async openLoadMenu() {
-  const { centerX, centerY } = this.cameras.main;
-
-  const overlay = this.add.rectangle(centerX, centerY, 1920, 1080, 0x000000, 0.8);
-
-  // 🔹 Obtener usuario logueado
-  const user = storage.getUser();
-  if (!user) {
-    console.warn("⚠️ No hay usuario logueado, no se pueden cargar partidas.");
-    this.add.text(centerX, centerY, "Debes iniciar sesión para continuar", {
-      fontSize: "28px",
-      color: "#ff6666",
-      backgroundColor: "#00000099",
-      padding: { x: 30, y: 20 },
-    }).setOrigin(0.5);
-    return;
-  }
-
-  // 🔹 Pedir saves del backend usando su ID
-  let saves = [];
-  try {
-    saves = await playerApi.getSaves(user.id);
-  } catch (err) {
-    console.error("Error al obtener partidas:", err);
-    this.add.text(centerX, centerY, "Error al obtener partidas", {
-      fontSize: "28px",
-      color: "#ff6666",
-      backgroundColor: "#00000099",
-      padding: { x: 30, y: 20 },
-    }).setOrigin(0.5);
-    return;
-  }
-
-  // 🔹 Crear el menú de partidas
-  const title = this.add
-    .text(centerX, centerY - 200, "Cargar partida", {
-      fontSize: "42px",
-      color: "#ffffff",
-    })
-    .setOrigin(0.5);
-
-  this.slotTexts = [];
-
-  for (let i = 1; i <= 5; i++) {
-    const s = saves.find((x) => x.slot_number === i);
-    const label = s
-      ? `Slot ${i} - Oleada ${s.wave_number} (${s.saved_at.split(" ")[1]})`
-      : `Slot ${i} - Vacío`;
-
-    const txt = this.add
-      .text(centerX, centerY - 120 + i * 60, label, {
-        fontSize: "28px",
-        color: s ? "#90ee90" : "#ffff00",
-        backgroundColor: "#333333",
-        padding: { x: 20, y: 10 },
-      })
-      .setOrigin(0.5)
-      .setInteractive()
-      .on("pointerdown", () => {
-        if (s) this.loadGameSlot(s);
-      });
-
-    this.slotTexts.push(txt);
-  }
-
-  const backBtn = this.add
-    .text(centerX, centerY + 250, "Cancelar", {
-      fontSize: "28px",
-      color: "#ff6666",
-      backgroundColor: "#333333",
-      padding: { x: 30, y: 10 },
-    })
-    .setOrigin(0.5)
-    .setInteractive()
-    .on("pointerdown", () => {
-      overlay.destroy();
-      title.destroy();
-      backBtn.destroy();
-      this.slotTexts.forEach((t) => t.destroy());
-    });
 }
-
-
-
-loadGameSlot(saveData) {
-  this.sound.stopAll();
-  this.scene.start("GameScene", { loadedSave: saveData });
-}
-}
-
-

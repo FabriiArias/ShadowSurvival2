@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { playerApi } from "../utils/api.js";
+import { storage } from "../utils/storage.js"; 
 
 /**
  * PauseScene
@@ -78,11 +79,46 @@ export default class PauseScene extends Phaser.Scene {
 
   /** Reanudar el juego */
   resumeGame() {
-    this.scene.stop();
-    this.scene.resume("GameScene");
-    this.gameScene.physics.resume();
-    this.gameScene.level1Music.resume();
+  const gs = this.gameScene;
+
+  // Quitar flags de pausa ANTES
+  gs.isPaused = false;
+  if (gs.waveSystem) gs.waveSystem.isPaused = false;
+
+  // Cerrar pause scene
+  this.scene.stop();
+
+  // Reanudar físicas, música, movimiento
+  gs.physics.resume();
+  gs.playerController.setEnabled(true);
+  gs.level1Music?.resume();
+  gs.player.setVelocity(0, 0);
+
+  // Ajustar tiempos reales
+  if (gs.waveSystem.pauseTimestamp) {
+    const delta = gs.time.now - gs.waveSystem.pauseTimestamp;
+
+    gs.waveSystem.accumulatedPauseTime =
+      (gs.waveSystem.accumulatedPauseTime || 0) + delta;
+
+    gs.waveSystem.lastSpawnTime += delta;
+
+    gs.waveSystem.pauseTimestamp = 0;
+
+    console.log(
+      "[PauseScene] RESUMIDO -> pauseDelta(ms):",
+      delta,
+      " accumulatedPauseTime:",
+      gs.waveSystem.accumulatedPauseTime
+    );
   }
+}
+
+
+
+
+
+
 
   /** Mutear música */
   toggleMusic() {
@@ -206,32 +242,76 @@ export default class PauseScene extends Phaser.Scene {
       if (res.status === 200) {
         this.showSaveConfirmation(slot);
       }
+      this.showSaveMessage();
     } catch (err) {
       console.error("Error al guardar progreso:", err);
     }
   }
 
   showSaveConfirmation(slot) {
-    const { width, height } = this.sys.game.config;
+  const { width, height } = this.sys.game.config;
 
-    const msg = this.add
-      .text(width / 2, height / 2 + 260, `Guardado en slot ${slot}`, {
-        fontSize: "24px",
+  const box = this.add.rectangle(width/2, height/2, 420, 120, 0x000000, 0.85)
+    .setDepth(3000)
+    .setOrigin(0.5);
+
+  const msg = this.add.text(width/2, height/2, `✔ Guardado en slot ${slot}`, {
+    fontSize: "28px",
+    color: "#00ff00",
+    fontStyle: "bold"
+  })
+  .setOrigin(0.5)
+  .setDepth(3001);
+
+  // Animación: aparece y luego fade out + zoom out
+  this.tweens.add({
+    targets: [box, msg],
+    alpha: { from: 1, to: 0 },
+    scale: { from: 1, to: 1.08 },
+    duration: 1800,
+    delay: 700,
+    onComplete: () => {
+      box.destroy();
+      msg.destroy();
+    }
+  });
+
+  this.closeSlotSelection();
+}
+
+showSaveMessage() {
+    const { width, height } = this.cameras.main;
+
+    const msg = this.add.text(width / 2, height - 100, "✓ Partida guardada", {
+        fontSize: "32px",
         color: "#00ff00",
-      })
-      .setOrigin(0.5)
-      .setDepth(3000);
+        stroke: "#000",
+        strokeThickness: 6,
+        backgroundColor: "rgba(0,0,0,0.6)",
+        padding: { x: 20, y: 10 },
+    })
+    .setOrigin(0.5)
+    .setDepth(9999)
+    .setAlpha(0);
 
+    // Fade in
     this.tweens.add({
-      targets: msg,
-      alpha: 0,
-      duration: 2000,
-      delay: 800,
-      onComplete: () => msg.destroy(),
+        targets: msg,
+        alpha: 1,
+        duration: 200,
+        ease: "Power2",
     });
 
-    this.closeSlotSelection();
-  }
+    // Fade out después de 1.2s
+    this.time.delayedCall(1200, () => {
+        this.tweens.add({
+            targets: msg,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => msg.destroy()
+        });
+    });
+}
 
   /** Salir al menú principal */
   exitToMenu() {

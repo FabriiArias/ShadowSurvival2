@@ -153,6 +153,10 @@ export default class GameScene extends Phaser.Scene {
       baseEnemiesAtOnce: 3,      // Enemigos simultáneos base
     };
 
+    this.waveSystem.pauseTimestamp = 0;
+    this.waveSystem.accumulatedPauseTime = 0;
+
+
     // Oleada actual y cantidad de enemigos
     this.currentWave = PlayerData.highestWave || 1;
     this.enemiesInWave = this.waveSystem.baseEnemiesAtOnce;
@@ -352,122 +356,117 @@ export default class GameScene extends Phaser.Scene {
    * Inicia una nueva oleada
    */
   startWave() {
-    // Recargar arma al inicio de cada oleada
-    this.playerController.reload();
-    
-    this.waveSystem.isActive = true;
-    this.waveSystem.isPaused = false;
-    this.waveSystem.startTime = 0;
-    this.waveSystem.lastSpawnTime = 0;
+  this.waveSystem.pauseTimestamp = 0;
+  this.waveSystem.accumulatedPauseTime = 0;
+  this.waveSystem.remainingTime = this.waveSystem.duration;
 
-    // Calcular duración de la oleada (aumenta con cada oleada)
-    // 20s + 10s por cada oleada adicional
-    this.waveSystem.duration = 20000 + (this.currentWave - 1) * 10000;
-    
-    // Calcular cantidad de enemigos simultáneos
-    // Base: 3 + 1 cada 2 oleadas, máximo 15
-    this.enemiesInWave =
-      this.waveSystem.baseEnemiesAtOnce + Math.floor(this.currentWave / 2);
-    this.enemiesInWave = Math.min(this.enemiesInWave, 15);
-    
-    // Calcular velocidad de spawn (más rápido en oleadas avanzadas)
-    // Mínimo 800ms, empieza en 2000ms - 100ms por oleada
-    this.waveSystem.enemySpawnRate = Math.max(
-      800,
-      2000 - this.currentWave * 100
-    );
+  // Recargar arma
+  this.playerController.reload();
 
-    // Mostrar animación de inicio
-    this.showWaveStartAnimation();
-  }
+  this.waveSystem.isActive = true;
+  this.waveSystem.isPaused = false;
+  this.waveSystem.startTime = 0;
+  this.waveSystem.lastSpawnTime = 0;
+
+  // Duración base
+  this.waveSystem.duration = 20000 + (this.currentWave - 1) * 10000;
+
+  // Cantidad de enemigos simultáneos
+  this.enemiesInWave =
+    this.waveSystem.baseEnemiesAtOnce + Math.floor(this.currentWave / 2);
+
+  this.enemiesInWave = Math.min(this.enemiesInWave, 15);
+
+  // Rate de spawn
+  this.waveSystem.enemySpawnRate = Math.max(
+    800,
+    2000 - this.currentWave * 100
+  );
+
+  // Animación de inicio de oleada
+  this.showWaveStartAnimation();
+}
+
+
 
   /**
    * Animación de inicio de oleada
    * Muestra "OLEADA X" y "PREPARATE!" durante 3 segundos
    */
   showWaveStartAnimation() {
-    // Pausar todo durante la animación
-    this.physics.pause();
-    this.playerController.setEnabled(false);
-    this.player.setVelocity(0, 0);
+  const { width, height } = this.sys.game.config;
 
-    const { width, height } = this.sys.game.config;
+  this.physics.pause();
+  this.playerController.setEnabled(false);
+  this.player.setVelocity(0, 0);
 
-    // Overlay oscuro de fondo
-    const overlay = this.add
-      .rectangle(width / 2, height / 2, width, height, 0x000000, 0.7)
-      .setScrollFactor(0) // No se mueve con la cámara
-      .setDepth(9000);    // Encima de todo
+  const overlay = this.add
+    .rectangle(width / 2, height / 2, width, height, 0x000000, 0.7)
+    .setScrollFactor(0)
+    .setDepth(10000);
 
-    // Texto principal: "OLEADA X"
-    const waveText = this.add
-      .text(width / 2, height / 2 - 50, `OLEADA ${this.currentWave}`, {
-        fontSize: "72px",
-        color: "#00ff00",
-        stroke: "#000",
-        strokeThickness: 8,
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(9001)
-      .setAlpha(0); // Empieza invisible
+  const waveText = this.add
+    .text(width / 2, height / 2 - 50, `OLEADA ${this.currentWave}`, {
+      fontSize: "72px",
+      color: "#00ff00",
+      stroke: "#000",
+      strokeThickness: 8,
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(10001)
+    .setAlpha(0);
 
-    // Texto secundario: "PREPARATE!"
-    const readyText = this.add
-      .text(width / 2, height / 2 + 50, "PREPARATE!", {
-        fontSize: "32px",
-        color: "#ffff00",
-        stroke: "#000",
-        strokeThickness: 5,
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(9001)
-      .setAlpha(0);
+  const readyText = this.add
+    .text(width / 2, height / 2 + 50, "PREPARATE!", {
+      fontSize: "32px",
+      color: "#ffff00",
+      stroke: "#000",
+      strokeThickness: 5,
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(10001)
+    .setAlpha(0);
 
-    // Fade in de los textos
+  this.tweens.add({
+    targets: [waveText, readyText],
+    alpha: 1,
+    scale: { from: 0.5, to: 1 },
+    duration: 500,
+    ease: "Back.easeOut",
+  });
+
+  this.tweens.add({
+    targets: readyText,
+    alpha: { from: 1, to: 0.3 },
+    duration: 400,
+    yoyo: true,
+    repeat: 3,
+    delay: 500,
+  });
+
+  this.time.delayedCall(3000, () => {
     this.tweens.add({
-      targets: [waveText, readyText],
-      alpha: 1,
-      scale: { from: 0.5, to: 1 },
+      targets: [overlay, waveText, readyText],
+      alpha: 0,
       duration: 500,
-      ease: "Back.easeOut",
-    });
+      onComplete: () => {
+        overlay.destroy();
+        waveText.destroy();
+        readyText.destroy();
 
-    // Efecto de parpadeo en "PREPARATE!"
-    this.tweens.add({
-      targets: readyText,
-      alpha: { from: 1, to: 0.3 },
-      duration: 400,
-      yoyo: true,
-      repeat: 3,
-      delay: 500,
-    });
+        this.physics.resume();
+        this.playerController.setEnabled(true);
 
-    // Después de 3 segundos, fade out y empezar oleada
-    this.time.delayedCall(3000, () => {
-      this.tweens.add({
-        targets: [overlay, waveText, readyText],
-        alpha: 0,
-        duration: 500,
-        onComplete: () => {
-          // Limpiar elementos visuales
-          overlay.destroy();
-          waveText.destroy();
-          readyText.destroy();
-          
-          // Reanudar juego
-          this.physics.resume();
-          this.playerController.setEnabled(true);
-          this.player.setVelocity(0, 0);
-          
-          // Marcar inicio real de la oleada
-          this.waveSystem.startTime = this.time.now;
-        },
-      });
+        this.waveSystem.startTime = this.time.now;
+        this.waveSystem.lastSpawnTime = this.time.now;
+      },
     });
-  }
+  });
+}
+
+
 
   /**
    * Finaliza la oleada actual
@@ -724,42 +723,52 @@ export default class GameScene extends Phaser.Scene {
    * Se llama constantemente en el update loop
    */
   updateHUD() {
-    // Verificar que el HUD existe y tiene todos sus elementos
-    if (
-      !this.hudScene ||
-      !this.hudScene.playerHealthBar ||
-      !this.hudScene.infoText ||
-      !this.playerController
-    )
-      return;
+  if (
+    !this.hudScene ||
+    !this.hudScene.infoText ||
+    !this.playerController
+  ) return;
 
-    // Actualizar barra de vida
-    this.hudScene.updateHealthBar(this.player.health, this.player.maxHealth);
+  this.hudScene.updateHealthBar(
+    this.player.health,
+    this.player.maxHealth
+  );
 
-    // Calcular tiempo restante de la oleada
-    let timeRemaining = 0;
-    if (this.waveSystem.isActive && !this.waveSystem.isPaused) {
-      const elapsed = this.time.now - this.waveSystem.startTime;
+  let timeRemaining = 0;
+
+  if (this.waveSystem.isActive) {
+    if (this.waveSystem.isPaused) {
+      timeRemaining = Math.ceil(
+        (this.waveSystem.remainingTime || this.waveSystem.duration) / 1000
+      );
+    } else if (this.waveSystem.startTime > 0) {
+      const elapsed =
+        this.time.now -
+        this.waveSystem.startTime -
+        (this.waveSystem.accumulatedPauseTime || 0);
+
       timeRemaining = Math.max(
         0,
         Math.ceil((this.waveSystem.duration - elapsed) / 1000)
       );
-    }
-
-    // Actualizar información general
-    this.hudScene.updateInfo(
-      this.currentWave,
-      this.stats.totalKills,
-      timeRemaining,
-      this.playerController.getCurrentBullets(),
-      this.playerController.getMaxBullets()
-    );
-
-    // Actualizar iconos de boosts activos
-    if (this.hudScene.updateBoosters) {
-      this.hudScene.updateBoosters(this.activeBoosts);
+    } else {
+      timeRemaining = Math.ceil(this.waveSystem.duration / 1000);
     }
   }
+
+  this.hudScene.updateInfo(
+    this.currentWave,
+    this.stats.totalKills,
+    timeRemaining,
+    this.playerController.getCurrentBullets(),
+    this.playerController.getMaxBullets()
+  );
+
+  this.hudScene.updateBoosters?.(this.activeBoosts);
+}
+
+
+
 
   /**
    * Sistema de spawn de enemigos
@@ -767,28 +776,30 @@ export default class GameScene extends Phaser.Scene {
    * @param {number} time - Timestamp actual del juego
    */
   spawnEnemies(time) {
-    // No spawnear si no hay oleada activa o está pausada
-    if (!this.waveSystem.isActive || this.waveSystem.isPaused) return;
-    if (this.waveSystem.startTime === 0) return;
+  if (!this.waveSystem.isActive || this.waveSystem.isPaused) return;
+  if (this.waveSystem.startTime === 0) return;
 
-    // Verificar si terminó el tiempo de la oleada
-    const elapsedTime = time - this.waveSystem.startTime;
-    if (elapsedTime >= this.waveSystem.duration) {
-      this.endWave();
-      return;
-    }
+  // Tiempo transcurrido real
+  const elapsed =
+    time -
+    this.waveSystem.startTime -
+    (this.waveSystem.accumulatedPauseTime || 0);
 
-    // No spawnear si ya hay suficientes enemigos
-    if (this.enemies.countActive(true) >= this.enemiesInWave) return;
-    
-    // Verificar si pasó suficiente tiempo desde el último spawn
-    if (time - this.waveSystem.lastSpawnTime < this.waveSystem.enemySpawnRate)
-      return;
-
-    // Spawnear enemigo
-    this.waveSystem.lastSpawnTime = time;
-    this.spawnRandomEnemy();
+  if (elapsed >= this.waveSystem.duration) {
+    this.endWave();
+    return;
   }
+
+  if (this.enemies.countActive(true) >= this.enemiesInWave) return;
+
+  if (time - this.waveSystem.lastSpawnTime < this.waveSystem.enemySpawnRate)
+    return;
+
+  this.waveSystem.lastSpawnTime = time;
+  this.spawnRandomEnemy();
+}
+
+
 
   /**
    * Spawnea un enemigo aleatorio desde los bordes del mapa
@@ -968,67 +979,121 @@ export default class GameScene extends Phaser.Scene {
    * @param {number} time - Timestamp actual
    * @param {number} delta - Milisegundos desde el último frame
    */
-  update(time, delta) {
-    // ============================================
-    // ⏸️ SISTEMA DE PAUSA CON ESC
-    // ============================================
-    if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) {
-      // Lanzar menú de pausa
-      this.scene.launch("PauseScene", {
-        gameScene: this,
-        playerData: PlayerData,
-      });
-      this.scene.pause(); // Pausar esta escena
-    }
+  /**
+ * Loop principal del juego (reemplazar todo el método update)
+ * @param {number} time - Timestamp actual
+ * @param {number} delta - Milisegundos desde el último frame
+ */
+update(time, delta) {
+  // Si la escena o la oleada están marcadas como pausadas → no ejecutar nada
+  if (this.isPaused || (this.waveSystem && this.waveSystem.isPaused)) return;
 
-    // ============================================
-    // 🛑 EARLY RETURNS (no procesar si está pausado/game over)
-    // ============================================
-    if (
-      this.isPaused ||
-      this.waveSystem?.isPaused ||
-      !this.playerController || // Prevenir crash si no existe el controlador
-      this.isGameOver
-    ) {
-      return;
-    }
+  // =============================================================
+  // 🟦 DETECTAR TECLA ESC → ACTIVAR PAUSA
+  // =============================================================
+  if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) {
 
-    // ============================================
-    // 🏃 APLICAR BOOST DE VELOCIDAD
-    // ============================================
-    const baseSpeed = 200;
-    const boostedSpeed = baseSpeed * (this.activeBoosts?.speedMultiplier || 1);
+    // Si hay oleada activa, guardar estado
+    if (this.waveSystem.isActive && !this.waveSystem.isPaused) {
 
-    // ============================================
-    // 🕹️ ACTUALIZAR CONTROLADOR DEL JUGADOR
-    // ============================================
-    const inputState = this.playerController?.update();
-    if (!inputState) return; // Safety check
+      // Timestamp de pausa (Phaser time)
+      this.waveSystem.pauseTimestamp = this.time.now;
 
-    // Verificar teclas de audio (M para música, N para SFX)
-    if (inputState.musicKeyPressed) {
-      this.hudScene.toggleMusic();
-    }
-    if (inputState.sfxKeyPressed) {
-      this.hudScene.toggleSFX();
-    }
+      // Guardar tiempo restante
+      if (this.waveSystem.startTime > 0) {
+        const elapsed =
+          this.time.now -
+          this.waveSystem.startTime -
+          (this.waveSystem.accumulatedPauseTime || 0);
 
-    // ============================================
-    // 👾 ACTUALIZAR ENEMIGOS
-    // ============================================
-    // Cada enemigo tiene su propio método update()
-    this.enemies.children.each((enemy) => {
-      if (enemy.active && enemy.update) {
-        enemy.update(time, delta);
+        this.waveSystem.remainingTime = Math.max(
+          0,
+          this.waveSystem.duration - elapsed
+        );
+      } else {
+        this.waveSystem.remainingTime = this.waveSystem.duration;
       }
+
+      // Marcar pausa de oleada
+      this.waveSystem.isPaused = true;
+
+      // Pausar físicas, controles y música
+      this.physics.pause();
+      this.playerController.setEnabled(false);
+      this.level1Music?.pause();
+
+      // Flag local de la escena
+      this.isPaused = true;
+
+      // Guardar timestamp para stats (con Date.now)
+      this.stats.pauseTimestamp = Date.now();
+
+      console.log(
+        "[GameScene] PAUSADO -> remainingTime(ms):",
+        this.waveSystem.remainingTime,
+        " pauseTimestamp:",
+        this.waveSystem.pauseTimestamp
+      );
+    }
+
+    // Lanzar PauseScene (SIN pausar la escena con this.scene.pause())
+    this.scene.launch("PauseScene", {
+      gameScene: this,
+      playerData: PlayerData,
     });
 
-    // ============================================
-    // 🌊 SISTEMA DE SPAWN Y HUD
-    // ============================================
-    this.spawnEnemies(time);
-    this.updateHUD();
+    return;
   }
+
+  // =============================================================
+  // 🚫 Si no hay controlador o game over → no seguir
+  // =============================================================
+  if (!this.playerController || this.isGameOver) return;
+
+  // =============================================================
+  // 🕹️ INPUT / MOVIMIENTO
+  // =============================================================
+  const inputState = this.playerController.update();
+  if (!inputState) return;
+
+  if (inputState.musicKeyPressed) this.hudScene.toggleMusic();
+  if (inputState.sfxKeyPressed) this.hudScene.toggleSFX();
+
+  // =============================================================
+  // 👾 ACTUALIZAR ENEMIGOS
+  // =============================================================
+  this.enemies.children.each((enemy) => {
+    if (enemy.active && enemy.update) {
+      try {
+        enemy.update(time, delta);
+      } catch (e) {
+        console.warn("enemy.update error:", e);
+      }
+    }
+  });
+
+  // =============================================================
+  // 🌊 SPAWN
+  // =============================================================
+  try {
+    this.spawnEnemies(time);
+  } catch (e) {
+    console.warn("spawnEnemies error:", e);
+  }
+
+  // =============================================================
+  // 🖥️ HUD
+  // =============================================================
+  try {
+    this.updateHUD();
+  } catch (e) {
+    console.warn("updateHUD error:", e);
+  }
+}
+
+
+
+
 
   /**
    * Callback cuando una bala del jugador impacta a un enemigo
@@ -1313,7 +1378,7 @@ export default class GameScene extends Phaser.Scene {
   onDestroy() {
     this.onShutdown();
   }
-
+  
   /**
    * Termina el juego cuando el jugador muere
    * Calcula estadísticas finales y cambia a GameOverScene
