@@ -12,14 +12,14 @@
 - [x] Hacer scene para el game over
 - [x] Poner el relaod al terminar una oleada y al apretar la R
 - [x] Hacer un pausescene y poner 
+- [x] Ver que la pausa no anda bien 
+- [x] Poner algun feedback a la hora de savear partida
+- [x] REGISTER
 - [] Agregar sprites y animaciones de las demas guns -CANCELADO POR FALTA DE TIEMPO-
-- [] Ver que la pausa no anda bien 
 - [] Boost de danio no funca
 - [] botones de mute all y mute music del gameScene
 - [] Que no deje stackear mas de 3 escudos y maxear la vida
-- [] Poner algun feedback a la hora de savear partida
 - [] Algun error con el tiempo que se carga en el getsave 
-- [] REGISTER
 - [] ocultar hud
 - [] Entrar como invitado
 - [] Poner un resuen del progreso en ese momento. 

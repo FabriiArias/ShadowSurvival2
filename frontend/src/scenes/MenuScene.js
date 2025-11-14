@@ -213,7 +213,7 @@ if (user && user.id) {
     for (let i = 1; i <= 5; i++) {
       const save = saves.find((s) => s.slot_number === i);
       const label = save
-        ? `Slot ${i} - Oleada ${save.wave_number} (${save.saved_at?.split(" ")[1] || 'sin fecha'})`
+        ? `Oleada ${save.wave_number} - Kills ${save.kills}`
         : `Slot ${i} - Vacío`;
 
       const txt = this.add

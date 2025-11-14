@@ -45,7 +45,7 @@ export default class PauseScene extends Phaser.Scene {
     this.resumeBtn = this.createButton(width / 2, height / 2 - 80, "Reanudar", () => this.resumeGame());
     this.musicBtn = this.createButton(width / 2, height / 2 - 20, "Mutear música", () => this.toggleMusic());
     this.sfxBtn = this.createButton(width / 2, height / 2 + 40, "Mutear efectos", () => this.toggleSFX());
-    this.saveBtn = this.createButton(width / 2, height / 2 + 100, "Guardar progreso", () => this.openSlotSelection());
+    this.saveBtn = this.createButton(width / 2, height / 2 + 100, "Guardar", () => this.openSlotSelection());
     this.exitBtn = this.createButton(width / 2, height / 2 + 160, "Salir al menú", () => this.exitToMenu());
 
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -164,7 +164,7 @@ export default class PauseScene extends Phaser.Scene {
     for (let i = 1; i <= 5; i++) {
       const existing = saves.find((s) => s.slot_number === i);
       const label = existing
-        ? `Slot ${i} - Oleada ${existing.wave_number} (${existing.saved_at.split(" ")[1]})`
+        ? `Oleada ${existing.wave_number} - Kills ${existing.kills}`
         : `Slot ${i} - Vacío`;
 
       const txt = this.add
